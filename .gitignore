@@ -16,3 +16,9 @@ build/
 # 설정 파일 (민감 정보 포함 가능)
 configs/*.json
 !configs/.gitkeep
+
+# Python 캐시 파일
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
