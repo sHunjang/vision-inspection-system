@@ -3,44 +3,99 @@ import cv2
 import numpy as np
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget,
-    QGridLayout, QLabel, QStatusBar
+    QGridLayout, QLabel, QStatusBar,
+    QComboBox, QPushButton,
+    QHBoxLayout, QVBoxLayout
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
+
+from app.utils.image_saver import ImageSaver
+
+
+# 제품 종류 목록 — 추후 configs/ 파일로 분리 예정
+PRODUCT_LIST = [
+    "T68-MCR",
+    "제품2", "제품3", "제품4", "제품5",
+    "제품6", "제품7", "제품8", "제품9", "제품10"
+]
 
 
 class MainWindow(QMainWindow):
     """
     메인 윈도우 클래스.
-    4개의 카메라 영상을 2x2 그리드 레이아웃으로 실시간 표시.
+    4개의 카메라 영상을 2x2 그리드로 실시간 표시하고
+    스페이스바 또는 버튼으로 이미지를 저장.
     """
 
     def __init__(self, camera_manager):
-        """
-        camera_manager: CameraManager 인스턴스 (이미 start_all() 호출된 상태)
-        """
         super().__init__()
         self.camera_manager = camera_manager
+        self.image_saver = ImageSaver(base_dir="data/raw")
 
-        self._init_ui()      # UI 구성
-        self._init_timer()   # 화면 갱신 타이머 시작
+        self._init_ui()
+        self._init_timer()
 
     def _init_ui(self):
         """UI 레이아웃을 구성."""
         self.setWindowTitle("Vision Inspection System — Camera View")
-        self.setMinimumSize(1280, 720)
+        self.setMinimumSize(1280, 780)
 
-        # 중앙 위젯 및 2x2 그리드 레이아웃
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        grid_layout = QGridLayout(central_widget)
-        grid_layout.setSpacing(4)         # 영상 간 간격
-        grid_layout.setContentsMargins(8, 8, 8, 8)
 
-        # 카메라 영상을 표시할 QLabel 4개 생성
-        # QLabel은 이미지를 표시하는 가장 기본적인 PyQt5 위젯입니다
+        # 전체 세로 레이아웃
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(6)
+
+        # ── 상단 컨트롤 바 ──────────────────────────
+        control_bar = QHBoxLayout()
+
+        # 제품 종류 선택 드롭다운
+        lbl_product = QLabel("제품 종류:")
+        self.product_combo = QComboBox()
+        self.product_combo.addItems(PRODUCT_LIST)
+        self.product_combo.setFixedWidth(160)
+        # 제품 변경 시 저장 카운트 상태 갱신
+        self.product_combo.currentTextChanged.connect(self._on_product_changed)
+
+        # 캡처 버튼
+        self.capture_btn = QPushButton("📷  캡처 저장  [Space]")
+        self.capture_btn.setFixedHeight(36)
+        self.capture_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2d7d46;
+                color: white;
+                border-radius: 4px;
+                font-size: 13px;
+                padding: 0 16px;
+            }
+            QPushButton:hover   { background-color: #3a9e5a; }
+            QPushButton:pressed { background-color: #1f5c33; }
+        """)
+        self.capture_btn.clicked.connect(self._capture_all)
+
+        # 저장 카운트 표시 라벨
+        self.count_label = QLabel("저장: 0장")
+        self.count_label.setStyleSheet("color: #aaaaaa; font-size: 12px;")
+
+        control_bar.addWidget(lbl_product)
+        control_bar.addWidget(self.product_combo)
+        control_bar.addSpacing(12)
+        control_bar.addWidget(self.capture_btn)
+        control_bar.addSpacing(12)
+        control_bar.addWidget(self.count_label)
+        control_bar.addStretch()
+
+        main_layout.addLayout(control_bar)
+
+        # ── 카메라 2x2 그리드 ────────────────────────
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(4)
+
         self.cam_labels = []
-        positions = [(0, 0), (0, 1), (1, 0), (1, 1)]  # (행, 열)
+        positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
 
         for i, (row, col) in enumerate(positions):
             label = QLabel()
@@ -51,27 +106,70 @@ class MainWindow(QMainWindow):
                 color: #888888;
                 font-size: 14px;
             """)
-            # 카메라 이름 가져오기
             cam_name = self.camera_manager.cameras[i].name
             label.setText(f"{cam_name}\n신호 없음")
-
-            # 그리드에 추가 (행, 열 위치)
             grid_layout.addWidget(label, row, col)
             self.cam_labels.append(label)
 
-        # 상태바 — 하단에 간단한 정보를 표시
+        main_layout.addLayout(grid_layout)
+
+        # 상태바
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("카메라 초기화 완료 — 실시간 영상 표시 중")
+        self.status_bar.showMessage(
+            "카메라 초기화 완료 — Space: 전체 캡처 저장"
+        )
 
     def _init_timer(self):
-        """
-        QTimer: 일정 간격으로 화면 갱신 함수를 호출.
-        33ms 간격 = 약 30FPS
-        """
+        """33ms 간격(약 30fps)으로 화면 갱신 타이머 시작."""
         self.timer = QTimer()
         self.timer.timeout.connect(self._update_frames)
-        self.timer.start(33)  # 33ms마다 _update_frames 호출
+        self.timer.start(33)
+
+    # ── 이벤트 핸들러 ────────────────────────────────
+
+    def keyPressEvent(self, event):
+        """스페이스바 입력 시 전체 카메라 캡처 저장."""
+        if event.key() == Qt.Key_Space:
+            self._capture_all()
+
+    def _on_product_changed(self, product_name: str):
+        """제품 종류 변경 시 해당 제품의 기존 저장 수 표시."""
+        count = self.image_saver.get_total_count(product_name)
+        self.count_label.setText(f"저장: {count}장")
+        self.status_bar.showMessage(
+            f"제품 변경: {product_name} — 기존 저장 {count}장"
+        )
+
+    def _capture_all(self):
+        """현재 4대 카메라 프레임을 모두 저장."""
+        product = self.product_combo.currentText()
+        frames = self.camera_manager.get_all_frames()
+        saved_paths = []
+
+        for i, frame in enumerate(frames):
+            if frame is not None:
+                cam_name = self.camera_manager.cameras[i].name
+                filepath = self.image_saver.save(
+                    frame=frame,
+                    camera_name=cam_name,
+                    product_type=product
+                )
+                saved_paths.append(filepath)
+                print(f"[저장] {filepath}")
+
+        # 상태바 및 카운트 갱신
+        total = self.image_saver.get_total_count(product)
+        if saved_paths:
+            self.count_label.setText(f"저장: {total}장")
+            self.status_bar.showMessage(
+                f"✅ {product} — {len(saved_paths)}장 저장 완료  "
+                f"(총 누적: {total}장)"
+            )
+        else:
+            self.status_bar.showMessage("⚠️  저장할 프레임이 없습니다.")
+
+    # ── 프레임 갱신 ──────────────────────────────────
 
     def _update_frames(self):
         """타이머에 의해 주기적으로 호출 — 모든 카메라 프레임을 갱신."""
@@ -79,12 +177,9 @@ class MainWindow(QMainWindow):
 
         for i, frame in enumerate(frames):
             cam = self.camera_manager.cameras[i]
-            
+
             if frame is not None:
-                # OpenCV 프레임을 QPixmap으로 변환하여 QLabel에 표시
                 pixmap = self._convert_frame_to_pixmap(frame)
-                
-                # QLabel 크기에 맞게 비율 유지하며 축소
                 self.cam_labels[i].setPixmap(
                     pixmap.scaled(
                         self.cam_labels[i].size(),
@@ -92,16 +187,11 @@ class MainWindow(QMainWindow):
                         Qt.SmoothTransformation
                     )
                 )
-                
-                # 텍스트 제거 (영상이 표시될 때는 텍스트 불필요)
                 self.cam_labels[i].setText("")
             else:
-                # 프레임이 없음 - 연결 상태에 따라 메시지 구분
                 self.cam_labels[i].setPixmap(QPixmap())
-                
                 if cam.is_connected:
-                    # 연결은 됐지만 아직 첫 프레임 못 받은 상태
-                    self.cam_labels[i].setText(f"{cam.name}\n초기화 중..")
+                    self.cam_labels[i].setText(f"{cam.name}\n초기화 중...")
                 else:
                     self.cam_labels[i].setText(f"{cam.name}\nNo Signal")
 
@@ -109,30 +199,20 @@ class MainWindow(QMainWindow):
     def _convert_frame_to_pixmap(frame: np.ndarray) -> QPixmap:
         """
         OpenCV 프레임(numpy BGR)을 PyQt5 QPixmap으로 변환.
-
-        OpenCV는 BGR 순서, Qt는 RGB 순서를 사용하기 때문에
-        반드시 색상 채널을 변환해야 .
+        OpenCV는 BGR, Qt는 RGB 순서를 사용하므로 반드시 변환 필요.
         """
-        # BGR → RGB 색상 변환
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
-
-        # numpy 배열 → QImage → QPixmap 순서로 변환
         q_image = QImage(
-            rgb_frame.data,       # 이미지 데이터
-            w, h,                 # 가로, 세로 크기
-            bytes_per_line,       # 한 행의 바이트 수
-            QImage.Format_RGB888  # RGB 형식
+            rgb_frame.data, w, h,
+            bytes_per_line,
+            QImage.Format_RGB888
         )
         return QPixmap.fromImage(q_image)
 
     def closeEvent(self, event):
-        """
-        창 닫기 버튼(X) 클릭 시 호출.
-        타이머와 카메라를 안전하게 종료.
-        """
+        """창 닫기 시 타이머와 카메라를 안전하게 종료."""
         self.timer.stop()
         self.camera_manager.stop_all()
         event.accept()
