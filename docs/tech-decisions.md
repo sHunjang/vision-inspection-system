@@ -55,3 +55,15 @@
 - **선택 이유**: Python 앱을 Windows .exe로 변환, 무료 오픈소스, PyQt5와 안정적 호환
 - **대안**: cx_Freeze, Nuitka
 - **결정일**: Phase 1
+
+## PatchCore 학습 결과 (MVTec screw 기준)
+
+| 지표 | 값 |
+|---|---|
+| image_AUROC | 0.9656 |
+| image_F1Score | 0.9426 |
+| pixel_AUROC | 0.9895 |
+| pixel_F1Score | 0.3704 |
+
+- image_AUROC 0.9656, pixel_AUROC 0.9895 → 현장 적용 기준(0.95) 충족
+- pixel_F1Score가 낮은 것은 불량 픽셀 비율이 작아서 발생하는 정상적인 현상

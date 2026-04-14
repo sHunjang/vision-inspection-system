@@ -33,3 +33,15 @@
 - **원인**: start_all()에서 카메라를 순서대로 1대씩 초기화
 - **해결**: threading을 이용해 4대를 동시에 병렬 초기화
   - 초기화 시간이 카메라 1대 수준으로 단축
+
+### [Phase 4] Anomalib 2.x API 변경 사항
+
+- **증상**: `from anomalib.data import MVTec` → import 오류
+- **원인**: Anomalib 2.x에서 클래스명 변경
+- **해결**: `MVTec` → `MVTecAD` 로 변경
+
+### [Phase 4] MVTecAD image_size 파라미터 제거
+
+- **증상**: `MVTecAD.__init__() got an unexpected keyword argument 'image_size'`
+- **원인**: Anomalib 2.x에서 image_size 파라미터 제거됨
+- **해결**: image_size 파라미터 제거 (기본값 자동 적용)
