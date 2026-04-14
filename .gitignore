@@ -22,3 +22,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+
+# MVTec 데이터셋 (대용량 — Git 추적 제외)
+data/mvtec/
+
+# 학습된 모델 결과물 (대용량 — Git 추적 제외)
+models/patchcore_screw/
+
+# 수집한 원본 이미지 데이터 (대용량)
+data/raw/*/
