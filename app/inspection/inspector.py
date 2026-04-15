@@ -141,7 +141,7 @@ class Inspector:
                 (frame.shape[0], frame.shape[1]), dtype=np.float32
             )
 
-        print(f"  [디버그] raw_score: {raw_score:.4f} / threshold: {self.threshold:.4f}")
+        # print(f"  [디버그] raw_score: {raw_score:.4f} / threshold: {self.threshold:.4f}")
 
         # 임계값 기준 양/불량 판정
         is_defective = raw_score > self.threshold
