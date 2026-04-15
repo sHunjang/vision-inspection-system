@@ -1,0 +1,61 @@
+# 트러블슈팅 문서
+
+> 개발 중 발생한 문제와 해결 과정을 기록합니다.
+> 형식: 문제 → 원인 → 해결 → 참고
+
+---
+
+## 템플릿
+
+---
+
+## 기록
+
+### [Phase 2] OpenCV DSHOW WARN 메시지 출력
+
+- **증상**: `VIDEOIO(DSHOW): backend is generally available but can't be used to capture by index` 경고 반복 출력
+- **원인**: `cv2.CAP_DSHOW` 백엔드로 존재하지 않는 카메라 인덱스(4~9번)를 열려고 시도할 때 발생하는 정상적인 경고
+- **해결**: 결과에 영향 없음. 탐색 범위를 실제 카메라 수에 맞게 줄이거나 경고 메시지를 무시해도 무방
+- **참고**: 발견된 카메라 인덱스 [0, 1, 2, 3] 은 정상 작동 확인
+
+### [Phase 2] USB 카메라 4대 동시 연결 시 영상 깜빡임
+
+- **증상**: C920 4대 동시 연결 시 1번 카메라 외 나머지가 깜빡이거나 신호 끊김 반복
+- **원인**: USB 2.0 프로토콜 기반 C920의 비압축(YUY2) 전송 시 대역폭 초과
+  - YUY2 포맷 640x480 @ 30fps = 약 27MB/s × 4대 = 108MB/s (USB 2.0 한계 초과)
+- **해결**: MJPG 압축 포맷 적용으로 전송량을 약 1/10 수준으로 감소
+  - `cv2.CAP_PROP_FOURCC` 를 `MJPG` 로 설정
+- **참고**: USB 컨트롤러 분산(앞면/뒷면 포트 나눠 연결)도 병행 권장
+
+### [Phase 2] 카메라 4대 순차 초기화로 인한 시작 시간 지연
+
+- **증상**: 앱 시작 시 카메라 초기화에 8~12초 소요
+- **원인**: start_all()에서 카메라를 순서대로 1대씩 초기화
+- **해결**: threading을 이용해 4대를 동시에 병렬 초기화
+  - 초기화 시간이 카메라 1대 수준으로 단축
+
+### [Phase 4] Anomalib 2.x API 변경 사항
+
+- **증상**: `from anomalib.data import MVTec` → import 오류
+- **원인**: Anomalib 2.x에서 클래스명 변경
+- **해결**: `MVTec` → `MVTecAD` 로 변경
+
+### [Phase 4] MVTecAD image_size 파라미터 제거
+
+- **증상**: `MVTecAD.__init__() got an unexpected keyword argument 'image_size'`
+- **원인**: Anomalib 2.x에서 image_size 파라미터 제거됨
+- **해결**: image_size 파라미터 제거 (기본값 자동 적용)
+
+### [Phase 5] Anomalib 2.x anomaly_score 항상 1.0 반환 문제
+
+- **증상**: `model.forward()` 의 `pred_score` 와 `anomaly_map` 이
+  양품/불량 모두 1.0에 가까운 값으로 반환됨
+- **원인**: Anomalib 2.x의 `forward()` 는 내부적으로
+  정규화(min-max normalization)까지 완료된 값을 반환함
+  → anomaly_map min이 0.65 이상으로 압축되어 구분 불가
+- **해결**: `model.model()` (내부 서브모듈) 을 직접 호출하여
+  정규화 전 raw distance 값을 획득
+  - 양품 raw_score: ~28.5 (threshold 30.48 이하)
+  - 불량 raw_score: ~40.8 (threshold 30.48 초과)
+- **임계값 확인 방법**:
+  `model.post_processor.image_threshold` 로 학습 시 결정된 임계값 확인
