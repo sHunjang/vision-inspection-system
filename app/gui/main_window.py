@@ -14,11 +14,12 @@ from app.gui.inspection_tab import InspectionTab
 from app.gui.history_tab import HistoryTab
 from app.gui.collection_tab import CollectionTab
 
-CKPT_PATH = (
-    Path(__file__).resolve().parent.parent.parent
-    / "models" / "patchcore_screw"
-    / "Patchcore" / "MVTecAD" / "screw"
-    / "v0" / "weights" / "lightning" / "model.ckpt"
+from app.utils.path_utils import get_model_path
+from app.utils.path_utils import get_data_dir
+
+
+CKPT_PATH = get_model_path(
+    "patchcore_screw/Patchcore/MVTecAD/screw/v0/weights/lightning/model.ckpt"
 )
 
 
@@ -27,11 +28,14 @@ class MainWindow(QMainWindow):
 
     def __init__(self, camera_manager: CameraManager):
         super().__init__()
+        
+        data_dir = get_data_dir()
+        
         self.camera_manager = camera_manager
 
         # 공유 객체 초기화
-        self.db_manager   = DBManager(db_path="data/inspection.db")
-        self.image_saver  = ImageSaver(base_dir="data/raw")
+        self.db_manager   = DBManager(db_path=str(data_dir / "inspection.db"))
+        self.image_saver  = ImageSaver(base_dir=str(data_dir / "raw"))
         self.inspector    = None
         self.insp_thread  = None
 

@@ -67,28 +67,28 @@ class Inspector:
             print(f"[오류] 모델 파일을 찾을 수 없습니다: {self.ckpt_path}")
             return False
 
+        # CUDA 가용 여부 재확인 — 패키징 환경에서도 안전하게 처리
+        if self.device.type == "cuda" and not torch.cuda.is_available():
+            print("[경고] CUDA를 사용할 수 없습니다. CPU로 전환합니다.")
+            self.device = torch.device("cpu")
+
         print(f"[모델 로드] {self.ckpt_path}")
         print(f"[디바이스] {self.device}")
 
         self.model = Patchcore.load_from_checkpoint(
             checkpoint_path=str(self.ckpt_path),
-            map_location=self.device,
+            map_location=self.device,   # ← 이미 device를 지정하므로 안전
             weights_only=False,
         )
         self.model.eval()
         self.model.to(self.device)
 
-        # 모델 내장 전처리기 가져오기
-        self.pre_processor = self.model.pre_processor
-
-        # 임계값: override가 없으면 모델 학습 시 결정된 값 사용
         pp = self.model.post_processor
         if self._threshold_override is None:
             self.threshold = float(pp.image_threshold)
         else:
             self.threshold = self._threshold_override
 
-        # 정규화 범위 저장 (score를 0~1로 변환할 때 사용)
         self.score_min = float(pp.image_min)
         self.score_max = float(pp.image_max)
 
