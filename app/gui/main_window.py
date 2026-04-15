@@ -12,6 +12,7 @@ from app.database.db_manager import DBManager
 from app.utils.image_saver import ImageSaver
 from app.gui.inspection_tab import InspectionTab
 from app.gui.history_tab import HistoryTab
+from app.gui.collection_tab import CollectionTab
 
 CKPT_PATH = (
     Path(__file__).resolve().parent.parent.parent
@@ -72,7 +73,14 @@ class MainWindow(QMainWindow):
         )
         tab_widget.addTab(self.inspection_tab, "🔍  실시간 검사")
 
-        # 탭 2: 검사 이력
+        # 탭 2: 데이터 수집 (기존 탭 2 앞에 추가)
+        self.collection_tab = CollectionTab(
+            camera_manager = self.camera_manager,
+            image_saver    = self.image_saver,
+        )
+        tab_widget.addTab(self.collection_tab, "📸  데이터 수집")
+
+        # 탭 3: 검사 이력
         self.history_tab = HistoryTab(db_manager=self.db_manager)
         tab_widget.addTab(self.history_tab, "📋  검사 이력")
 
@@ -104,7 +112,7 @@ class MainWindow(QMainWindow):
 
     def _on_tab_changed(self, index: int):
         """탭 전환 시 이력 탭 새로고침."""
-        if index == 1:
+        if index == 2:
             self.history_tab.refresh()
 
     def keyPressEvent(self, event):
