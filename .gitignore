@@ -30,4 +30,4 @@ data/mvtec/
 models/patchcore_screw/
 
 # 수집한 원본 이미지 데이터 (대용량)
-data/raw/*/
+data/
