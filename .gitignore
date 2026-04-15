@@ -1,37 +1,34 @@
-# 프로젝트 전용 제외 항목
-models/*.pt
-models/*.pth
-data/raw/*
-data/labeled/*
-data/augmented/*
-!data/raw/.gitkeep
-!data/labeled/.gitkeep
-!data/augmented/.gitkeep
-
-# PyInstaller 빌드 결과물
-dist/
-build/
-*.spec
-
-# 설정 파일 (민감 정보 포함 가능)
-configs/*.json
-!configs/.gitkeep
-
-# Python 캐시 파일
+# ── Python 캐시 ──────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 
-# MVTec 데이터셋 (대용량 — Git 추적 제외)
+# ── PyInstaller (런처 방식으로 전환, 더 이상 사용 안 함) ──
+dist/
+build/
+*.spec
+
+# ── 대용량 데이터 (Git 추적 제외) ────────────────
 data/mvtec/
+data/raw/*/
+data/custom/
+!data/raw/.gitkeep
 
-# 학습된 모델 결과물 (대용량 — Git 추적 제외)
+# ── 학습된 모델 결과물 (대용량) ──────────────────
 models/patchcore_screw/
-
-# 수집한 원본 이미지 데이터 (대용량)
-data/
 deploy_models/
 
+# ── 배포 패키지 (스크립트로 재생성 가능) ─────────
 vision-inspection-deploy/
-deploy_models/
+
+# ── 설정 파일 (민감 정보 포함 가능) ─────────────
+configs/*.json
+!configs/.gitkeep
+
+# ── DB 파일 ──────────────────────────────────────
+data/inspection.db
+
+# ── 기타 ─────────────────────────────────────────
+*.pt
+*.pth
