@@ -97,6 +97,23 @@
 
 ---
 
+## Phase 6 — GUI 완성
+
+### 이번 Phase에서 한 일
+- SQLite 기반 검사 이력 DB 구현 (`app/database/db_manager.py`)
+- 실시간 검사 탭 위젯 분리 (`app/gui/inspection_tab.py`)
+- 검사 이력 조회 탭 구현 (`app/gui/history_tab.py`)
+- 탭 구조 메인 윈도우로 전체 UI 재구성 (`app/gui/main_window.py`)
+- 검사 결과 실시간 DB 저장 및 통계 표시
+
+### 배운 점
+- SQLite의 장점 — 별도 서버 없이 파일 하나로 DB 운용 가능
+- PyQt5 QTabWidget으로 화면을 논리적으로 분리하는 방법
+- os.makedirs vs os.mkdir 차이 (exist_ok 파라미터 지원 여부)
+- GUI 스레드와 추론 스레드 분리 구조가 실제로 효과적임을 확인
+
+---
+
 ## 전체 프로젝트 회고
 
 > 모든 Phase 완료 후 작성 예정
