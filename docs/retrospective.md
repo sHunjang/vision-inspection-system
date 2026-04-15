@@ -42,6 +42,61 @@
 
 ---
 
+## Phase 3 — 데이터 파이프라인
+
+### 이번 Phase에서 한 일
+- 이미지 캡처 저장 유틸리티 구현 (`app/utils/image_saver.py`)
+- GUI에 제품 선택 드롭다운 및 캡처 버튼 추가
+- 스페이스바로 4대 카메라 동시 캡처 저장 기능 구현
+- MVTec AD 데이터셋 다운로드 및 구조 확인 (screw 카테고리)
+- 오픈 데이터셋으로 전체 파이프라인 검증 방향 결정
+
+### 배운 점
+- 제조 현장에서 불량 데이터가 희소한 현실적 문제 인식
+- 이상 탐지(Anomaly Detection) 방식이 양품 데이터만으로
+  학습 가능한 이유 이해
+- YOLOv8(부품 탐지) + PatchCore(외관 이상) 혼합 전략 수립
+- 데이터 저장 시 제품·카메라·날짜별 폴더 구조의 중요성
+- Git에서 대용량 파일(데이터셋, 모델)은 .gitignore로 제외해야 함
+
+---
+
+## Phase 4 — AI 모델 개발
+
+### 이번 Phase에서 한 일
+- Anomalib 2.3.3 설치 및 동작 확인
+- PatchCore 학습 스크립트 작성 (`scripts/train_patchcore.py`)
+- MVTec screw 데이터셋으로 PatchCore 학습 완료
+- 학습 결과 평가 (image_AUROC: 0.9656 / pixel_AUROC: 0.9895)
+- Anomalib 2.x API 변경 사항 트러블슈팅
+
+### 배운 점
+- PatchCore 동작 원리 — 양품 패치 특징을 메모리 뱅크에 저장하고
+  새 이미지와 거리를 계산하는 방식
+- AUROC 지표의 의미 — 1.0에 가까울수록 양/불량 구분 능력 우수
+- pixel_F1Score가 낮아도 image_AUROC가 높으면 현장 적용 가능
+- Anomalib 2.x에서 MVTec → MVTecAD, image_size 파라미터 제거 등
+  API 변경 사항
+- PatchCore는 1 에폭만으로 학습 완료 (메모리 뱅크 구축 방식이므로)
+
+---
+
+## Phase 5 — 검사 엔진
+
+### 이번 Phase에서 한 일
+- PatchCore 추론 엔진 구현 (`app/inspection/inspector.py`)
+- 별도 추론 스레드 구현 (`app/inspection/inspection_thread.py`)
+- PyQt5 GUI에 실시간 검사 결과 연동 (`app/gui/main_window.py`)
+- 검사 ON/OFF 토글, 검사 카메라 선택 기능 추가
+
+### 배운 점
+- Anomalib 2.x의 `forward()` 는 정규화된 값만 반환 →
+  `model.model()` 직접 호출로 raw distance 획득
+- GUI 스레드와 추론 스레드 분리의 중요성
+- threading.Event를 이용한 프레임 전달 방식
+
+---
+
 ## 전체 프로젝트 회고
 
 > 모든 Phase 완료 후 작성 예정

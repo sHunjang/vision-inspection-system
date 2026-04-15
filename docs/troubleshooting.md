@@ -45,3 +45,17 @@
 - **증상**: `MVTecAD.__init__() got an unexpected keyword argument 'image_size'`
 - **원인**: Anomalib 2.x에서 image_size 파라미터 제거됨
 - **해결**: image_size 파라미터 제거 (기본값 자동 적용)
+
+### [Phase 5] Anomalib 2.x anomaly_score 항상 1.0 반환 문제
+
+- **증상**: `model.forward()` 의 `pred_score` 와 `anomaly_map` 이
+  양품/불량 모두 1.0에 가까운 값으로 반환됨
+- **원인**: Anomalib 2.x의 `forward()` 는 내부적으로
+  정규화(min-max normalization)까지 완료된 값을 반환함
+  → anomaly_map min이 0.65 이상으로 압축되어 구분 불가
+- **해결**: `model.model()` (내부 서브모듈) 을 직접 호출하여
+  정규화 전 raw distance 값을 획득
+  - 양품 raw_score: ~28.5 (threshold 30.48 이하)
+  - 불량 raw_score: ~40.8 (threshold 30.48 초과)
+- **임계값 확인 방법**:
+  `model.post_processor.image_threshold` 로 학습 시 결정된 임계값 확인

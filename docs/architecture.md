@@ -27,7 +27,8 @@ MJPG 압축 포맷                          QTimer 30fps 갱신
 | 카메라 매니저 | `app/camera/camera_manager.py` | 4대 카메라 통합 관리 | ✅ 완료 |
 | 메인 윈도우 | `app/gui/main_window.py` | PyQt5 2x2 카메라 뷰어 | ✅ 완료 |
 | 앱 진입점 | `app/main.py` | 앱 초기화 및 실행 | ✅ 완료 |
-| 검사 엔진 | `app/inspection/` | AI 모델 추론 및 불량 판정 | 🔜 Phase 4~5 |
+| 검사 스레드 | `app/inspection/inspection_thread.py` | 별도 스레드 PatchCore 추론 | ✅ 완료 |
+| 검사 엔진 | `app/inspection/inspector.py` | 모델 로드 및 추론, 결과 오버레이 | ✅ 완료 |
 | 데이터베이스 | `app/database/` | SQLite 검사 이력 관리 | 🔜 Phase 6 |
 | 유틸리티 | `app/utils/` | 공통 함수, 경로 처리 등 | 🔜 Phase 6 |
 
