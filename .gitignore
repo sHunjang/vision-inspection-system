@@ -31,3 +31,7 @@ models/patchcore_screw/
 
 # 수집한 원본 이미지 데이터 (대용량)
 data/
+deploy_models/
+
+vision-inspection-deploy/
+deploy_models/
