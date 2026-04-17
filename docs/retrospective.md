@@ -119,6 +119,20 @@
   
 ---
 
+## Phase 7 — 패키징 및 배포
+
+### 이번 Phase에서 한 일
+- PyInstaller 패키징 시도 → CUDA DLL 문제로 런처 방식으로 전환
+- install.bat / run.bat / update_model.bat 런처 스크립트 작성
+- 배포 패키지 자동 생성 스크립트 작성 (`scripts/build_deploy_package.py`)
+- 모델 파일 추출 스크립트 작성 (`scripts/prepare_model_for_deploy.py`)
+- 프로젝트 구조 정리 (불필요한 폴더/파일 제거)
+- 4대 카메라 동시 검사 구조로 개선
+- 통합 판정 패널 및 카메라별 테두리 강조 UI 추가
+- main 브랜치 병합 및 v1.0.0, v1.0.1 태그 생성
+
+---
+
 ## 전체 프로젝트 회고
 
 > 모든 Phase 완료 후 작성 예정
