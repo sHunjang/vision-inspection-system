@@ -135,10 +135,55 @@
 
 ## 전체 프로젝트 회고
 
-> 모든 Phase 완료 후 작성 예정
+## 전체 프로젝트 회고
+
+### 프로젝트 완료 요약
+
+| Phase | 내용 | 상태 |
+|---|---|---|
+| Phase 1 | 환경 구축, Git Flow, 프로젝트 구조 | ✅ |
+| Phase 2 | 카메라 모듈, PyQt5 GUI 뷰어 | ✅ |
+| Phase 3 | 데이터 수집, 캡처 저장 기능 | ✅ |
+| Phase 4 | PatchCore 모델 학습 | ✅ |
+| Phase 5 | 실시간 검사 엔진 + GUI 연동 | ✅ |
+| Phase 6 | GUI 완성 (탭 구조, DB, 수집 탭) | ✅ |
+| Phase 7 | 배포 (런처 스크립트 방식) | ✅ |
+| Phase 8 | MVP 완성 및 문서 정리 | ✅ |
+
+---
 
 ### 프로젝트를 통해 성장한 점
 
+**기술적 성장**
+- Python 멀티스레딩 실무 적용 — Lock, Event, daemon 스레드 개념을 카메라·검사 모듈에 직접 구현
+- PyQt5 GUI 개발 — QTimer, QGridLayout, QTabWidget, Signal/Slot 패턴 습득
+- PatchCore 이상 탐지 — 양품 데이터만으로 학습하는 산업 AI 방법론 이해
+- Anomalib 2.x API — 버전 변경으로 인한 트러블슈팅 경험 (MVTecAD, raw distance 추출)
+- Git Flow 실무 — feature → develop → main 브랜치 전략을 프로젝트 전체에 적용
+- OpenCV + PyQt5 연동 — BGR/RGB 변환, QImage/QPixmap 변환 흐름 이해
+
+**실무 감각**
+- 제조 현장의 불량 데이터 희소 문제를 이상 탐지로 해결하는 전략 수립
+- USB 대역폭 문제를 MJPG 포맷과 병렬 초기화로 해결
+- PyInstaller 한계를 인식하고 런처 스크립트로 현실적 대안 선택
+- 개발(CUDA)과 배포(CPU) 환경 분리 전략
+
+---
+
 ### 실제 현장 적용 시 보완할 점
 
+- 실제 T68-MCR 제품 데이터로 PatchCore 재학습 필요
+- 카메라 고정 지그 및 조명 환경 통일 필요
+- 10종 제품별 개별 모델 관리 체계 구축
+- 검사 속도 최적화 (현재 CPU 추론 시 약 1~3초/장)
+- 현장 네트워크 환경에서 배포 테스트 필요
+
+---
+
 ### 다음 버전(v2.0)에서 추가 예정 기능
+
+- OCR 기반 라벨 텍스트 정확성 검사 (PaddleOCR)
+- YOLOv8 부품 존재 여부 탐지 (볼트, 라벨)
+- 불량 이미지 자동 저장 및 리포트 PDF 출력
+- 검사 결과 실시간 모니터링 대시보드
+- 다중 제품 모델 자동 전환 기능
