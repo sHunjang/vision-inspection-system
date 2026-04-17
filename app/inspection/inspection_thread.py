@@ -1,103 +1,126 @@
-# 별도 스레드에서 PatchCore 추론 수행 모듈
-# GUI 스레드와 분리하여 화면 버벅임 없이 실시간 검사 수행
+# 4대 카메라를 동시에 별도 스레드에서 추론하는 모듈
 import threading
 import numpy as np
-
 from app.inspection.inspector import Inspector, InspectionResult
+
+
+class CameraInspectionThread:
+    """단일 카메라 전용 추론 스레드."""
+
+    def __init__(self, inspector: Inspector, cam_name: str):
+        self.inspector   = inspector
+        self.cam_name    = cam_name
+        self._frame      = None
+        self._result     = None
+        self._lock       = threading.Lock()
+        self._event      = threading.Event()
+        self._is_running = False
+        self._thread     = None
+
+    def start(self):
+        self._is_running = True
+        self._thread = threading.Thread(
+            target=self._loop,
+            daemon=True,
+            name=f"Inspection-{self.cam_name}"
+        )
+        self._thread.start()
+
+    def _loop(self):
+        while self._is_running:
+            triggered = self._event.wait(timeout=1.0)
+            if not triggered:
+                continue
+
+            with self._lock:
+                frame = self._frame.copy() if self._frame is not None else None
+                self._event.clear()
+
+            if frame is None:
+                continue
+
+            try:
+                result = self.inspector.predict(frame)
+                with self._lock:
+                    self._result = result
+            except Exception as e:
+                print(f"[오류] {self.cam_name} 추론 중 예외: {e}")
+
+    def update_frame(self, frame: np.ndarray):
+        with self._lock:
+            self._frame = frame.copy() if frame is not None else None
+        self._event.set()
+
+    def get_result(self) -> InspectionResult:
+        with self._lock:
+            return self._result
+
+    def stop(self):
+        self._is_running = False
+        self._event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=3.0)
 
 
 class InspectionThread:
     """
-    Inspector를 별도 스레드에서 실행하는 래퍼 클래스.
-    
-    카메라 프레임을 받아 추론하고 결과 저장
-    GUI == get_result()로 최신 결과만 가져감
-    
-    ex:
-        insp_thread = InspectionThread(inspector)
-        insp_thread.start()
-        insp_thread.update_frame(frame)     # 새 프레임 전달
-        result = insp_thread.get_result()   # 최신 결과 조회
-        insp_thread.stop()
+    4대 카메라를 동시에 추론하고 통합 판정을 내리는 매니저 클래스.
     """
-    
-    def __init__(self, inspector: Inspector):
+
+    def __init__(self, inspector: Inspector, cam_names: list = None):
         self.inspector = inspector
-        self._frame = None      # 추론할 최신 프레임
-        self._result = None     # 가잔 최근 추론 결과
-        self._lock = threading.Lock()
-        self._event = threading.Event()     # 새 프레임 도착 신호
-        self._is_running = False
-        self._thread = None
-    
-    
+        self.cam_names = cam_names or ["Front", "Back", "Left", "Right"]
+
+        # 카메라 1대당 스레드 1개
+        self._threads = [
+            CameraInspectionThread(inspector, name)
+            for name in self.cam_names
+        ]
+
     def start(self):
-        """추론 스레드 시작 함수"""
-        
-        self._is_running = True
-        self._thread = threading.Thread(
-            target=self._inference_loop,
-            daemon=True,
-            name="Thread-Inspection"
-        )
-        self._thread.start()
-        print("[시작] 검사 스레드 시작")
-    
-    
-    def _inference_loop(self):
-        """
-        새로운 프레임이 들어올 때마다 추론을 수행하는 루프
-        Event 사용으로 프레임이 없을 때는 대기
-        """
-        while self._is_running:
-            # 새로운 프레임 도착까지 대기 (최대 1초)
-            triggered = self._event.wait(timeout=1.0)
-            
-            if not triggered:
+        for t in self._threads:
+            t.start()
+        print(f"[시작] 검사 스레드 {len(self._threads)}대 시작")
+
+    def update_frames(self, frames: list):
+        """4개 프레임을 각 스레드에 전달합니다."""
+        for i, frame in enumerate(frames):
+            if i < len(self._threads) and frame is not None:
+                self._threads[i].update_frame(frame)
+
+    def get_results(self) -> list:
+        """4개 카메라의 개별 결과를 반환합니다."""
+        return [t.get_result() for t in self._threads]
+
+    def get_final_result(self) -> dict:
+        """4개 결과를 통합하여 최종 판정을 반환합니다."""
+        results     = self.get_results()
+        defect_cams = []
+        scores      = {}
+        max_score   = 0.0
+
+        for i, result in enumerate(results):
+            if result is None:
                 continue
-            
-            # 프레임 가져오기
-            with self._lock:
-                frame = self._frame.copy() if self._frame is not None else None
-                self._event.clear()     # 이벤트 초기화
-            
-            if frame is None:
-                continue
-            
-            
-            # 추론 수행
-            try:
-                result = self.inspector.predict(frame)
-                
-                with self._lock:
-                    self._result = result
-            
-            except Exception as e:
-                print(f"[오류] 추론 중 예외 발생: {e}")
-    
-    
-    def update_frame(self, frame: np.ndarray):
-        """
-        새로운 프레임을 전달하고 추론 요청
-        GUI의 QTimer에서 호출됨.
-        """
-        with self._lock:
-            self._frame = frame.copy() if frame is not None else None    
-        self._event.set()       # 새로운 프레임 도착 신호
-        
-    
-    def get_result(self) -> InspectionResult:
-        """가장 최근 추론 결과 반환"""
-        with self._lock:
-            return self._result
-    
-    
+            cam_name = self.cam_names[i]
+            scores[cam_name] = result.anomaly_score
+            max_score = max(max_score, result.anomaly_score)
+
+            if result.is_defective:
+                defect_cams.append(cam_name)
+
+        is_defective = len(defect_cams) > 0
+
+        return {
+            "is_defective"  : is_defective,
+            "label"         : "DEFECT" if is_defective else "OK",
+            "color"         : (0, 0, 255) if is_defective else (0, 255, 0),
+            "defect_cameras": defect_cams,
+            "max_score"     : max_score,
+            "scores"        : scores,
+        }
+
     def stop(self):
-        """추론 스레드 종료"""
-        self._is_running = False
-        self._event.set()   # 대기 중인 스레드 깨우기
-        
-        if self._thread is not None:
-            self._thread.join(timeout=3.0)
-        
+        for t in self._threads:
+            t.stop()
         print("[종료] 검사 스레드 종료")

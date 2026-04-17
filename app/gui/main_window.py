@@ -51,6 +51,17 @@ class MainWindow(QMainWindow):
 
         self.inspector = Inspector(ckpt_path=str(CKPT_PATH), threshold=None)
         if self.inspector.load():
+            # 카메라 이름 목록 전달 → 4대 동시 추론 스레드 생성
+            cam_names = [cam.name for cam in self.camera_manager.cameras]
+            self.insp_thread = InspectionThread(
+                inspector  = self.inspector,
+                cam_names  = cam_names
+            )
+            self.insp_thread.start()
+            print("[모델] 로드 완료")
+
+        self.inspector = Inspector(ckpt_path=str(CKPT_PATH), threshold=None)
+        if self.inspector.load():
             self.insp_thread = InspectionThread(self.inspector)
             self.insp_thread.start()
             print("[모델] 로드 완료")
