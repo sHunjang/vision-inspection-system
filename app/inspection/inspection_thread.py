@@ -1,4 +1,6 @@
 # 4대 카메라를 동시에 별도 스레드에서 추론하는 모듈
+import cv2
+import torch
 import threading
 import numpy as np
 from app.inspection.inspector import Inspector, InspectionResult
@@ -8,14 +10,15 @@ class CameraInspectionThread:
     """단일 카메라 전용 추론 스레드."""
 
     def __init__(self, inspector: Inspector, cam_name: str):
-        self.inspector   = inspector
-        self.cam_name    = cam_name
-        self._frame      = None
-        self._result     = None
-        self._lock       = threading.Lock()
-        self._event      = threading.Event()
-        self._is_running = False
-        self._thread     = None
+        self.inspector      = inspector
+        self.cam_name       = cam_name
+        self._frame         = None
+        self._result        = None
+        self._lock          = threading.Lock()
+        self._event         = threading.Event()
+        self._is_running    = False
+        self._is_processing = False  # 추론 중 플래그
+        self._thread        = None
 
     def start(self):
         self._is_running = True
@@ -40,13 +43,19 @@ class CameraInspectionThread:
                 continue
 
             try:
+                self._is_processing = True
                 result = self.inspector.predict(frame)
                 with self._lock:
                     self._result = result
             except Exception as e:
                 print(f"[오류] {self.cam_name} 추론 중 예외: {e}")
+            finally:
+                self._is_processing = False
 
     def update_frame(self, frame: np.ndarray):
+        """추론 중이면 프레임 스킵하여 큐 누적 방지."""
+        if self._is_processing:
+            return
         with self._lock:
             self._frame = frame.copy() if frame is not None else None
         self._event.set()
@@ -63,15 +72,12 @@ class CameraInspectionThread:
 
 
 class InspectionThread:
-    """
-    4대 카메라를 동시에 추론하고 통합 판정을 내리는 매니저 클래스.
-    """
+    """4대 카메라를 동시에 추론하고 통합 판정을 내리는 매니저 클래스."""
 
     def __init__(self, inspector: Inspector, cam_names: list = None):
         self.inspector = inspector
         self.cam_names = cam_names or ["Front", "Back", "Left", "Right"]
 
-        # 카메라 1대당 스레드 1개
         self._threads = [
             CameraInspectionThread(inspector, name)
             for name in self.cam_names
@@ -83,7 +89,7 @@ class InspectionThread:
         print(f"[시작] 검사 스레드 {len(self._threads)}대 시작")
 
     def update_frames(self, frames: list):
-        """4개 프레임을 각 스레드에 전달합니다."""
+        """4개 프레임을 각 스레드에 개별 전달합니다."""
         for i, frame in enumerate(frames):
             if i < len(self._threads) and frame is not None:
                 self._threads[i].update_frame(frame)

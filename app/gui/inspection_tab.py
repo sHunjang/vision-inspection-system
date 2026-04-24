@@ -1,6 +1,9 @@
 # 실시간 검사 탭 — 4대 카메라 동시 검사 및 통합 판정
 import cv2
 import numpy as np
+import queue
+import threading
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QComboBox, QFrame
@@ -42,7 +45,29 @@ class InspectionTab(QWidget):
         self.inspection_enabled = False
         self._last_final       = None  # 마지막 통합 판정 결과
 
+        # DB 비동기 저장 큐 및 스레드 추가
+        self._db_queue = queue.Queue()
+        self._db_thread = threading.Thread(
+            target=self._db_worker,
+            daemon=True,
+            name="Thread-DB"
+        )
+        self._db_thread.start()
+        
         self._init_ui()
+
+    def _db_worker(self):
+        """별도 스레드에서 DB 저장을 처리"""
+        while True:
+            item = self._db_queue.get()
+            if item is None:  # 종료 신호
+                break
+            try:
+                self.db_manager.insert_log(**item)
+            except Exception as e:
+                print(f"[오류] DB 저장 실패: {e}")
+            finally:
+                self._db_queue.task_done()
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -267,16 +292,16 @@ class InspectionTab(QWidget):
         return final["is_defective"] != self._last_final["is_defective"]
 
     def _save_to_db(self, final: dict):
-        """통합 판정 결과를 DB에 저장합니다."""
+        """검사 결과를 DB큐에 비동기 저장"""
         product = self.product_combo.currentText()
         for cam_name, score in final["scores"].items():
-            self.db_manager.insert_log(
-                product   = product,
-                camera    = cam_name,
-                result    = final["label"],
-                score     = score,
-                threshold = self.inspector.threshold,
-            )
+            self._db_queue.put({
+                "product": product,
+                "camera": cam_name,
+                "result": final["label"],
+                "score": score,
+                "threshold": self.inspector.threshold,
+            })
 
     @staticmethod
     def _to_pixmap(frame: np.ndarray) -> QPixmap:
