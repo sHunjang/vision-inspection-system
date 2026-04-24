@@ -26,7 +26,7 @@ class DBManager:
         # DB 파일이 저장될 폴더 생성
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self._init_db()
-        
+
     
     def _init_db(self):
         """DB 및 테이블 초기화. 없으면 새로 생성"""

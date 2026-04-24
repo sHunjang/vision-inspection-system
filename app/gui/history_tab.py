@@ -77,7 +77,7 @@ class HistoryTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet("""
             QTableWidget { gridline-color: #333; }
-            QTableWidget::item:alternate { background-color: #1e1e1e; }
+            QTableWidget::item:alternate { background-color: #333; }
         """)
 
         layout.addWidget(self.table)
